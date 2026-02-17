@@ -1,0 +1,654 @@
+<!-- amazon_review_phone_screen_with_statusbar.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Amazon Write a Review (Replica)</title>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+      integrity="sha256-sn/QI6Zz+QxZQvOq4P+0eJQvFh7c5yD+XG1iWf3Z6rU="
+      crossorigin="anonymous"
+    ></script>
+
+    <style>
+      :root{
+        --amazon-yellow:#ffd814;
+        --amazon-yellow-border:#fcd200;
+        --text:#0f1111;
+        --border:#d5d9d9;
+        --tile-bg:#f7fafa;
+        --shadow:0 1px 0 rgba(0,0,0,.06);
+        --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+        --star-on:#f8a41b;
+        --star-off:#d6d6d6;
+        --statusbar-height: 28px; /* iOS-ish */
+      }
+      *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+      html,body{height:100%;margin:0;font-family:var(--font);color:var(--text);background:#fff}
+      #captureRoot{min-height:100vh;background:#fff}
+
+      /* -------- Fake iPhone status bar (capturable) -------- */
+      .statusBar{
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: calc(var(--statusbar-height) + env(safe-area-inset-top));
+        padding-top: env(safe-area-inset-top);
+        background: transparent;
+        z-index: 50;
+        pointer-events: none;
+      }
+      .statusBarRow{
+        height: var(--statusbar-height);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+      }
+      .statusTime{
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        color: #111;
+        min-width: 56px;
+      }
+      .statusRight{
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sbIcon{display:block}
+      .sbCell svg{width:18px;height:18px}
+      .sbWifi svg{width:18px;height:18px}
+      .sbBattery svg{width:26px;height:18px}
+
+      /* -------- Header (wood) -------- */
+      .woodHeader{
+        /* push below fake status bar */
+        padding: calc(env(safe-area-inset-top) + var(--statusbar-height) + 10px) 12px 12px;
+        background:
+          linear-gradient(0deg, rgba(255,255,255,.08), rgba(255,255,255,.08)),
+          repeating-linear-gradient(
+            90deg,
+            #c89a6c 0px,#c89a6c 10px,
+            #bf8e60 10px,#bf8e60 18px,
+            #d1a477 18px,#d1a477 26px,
+            #b98456 26px,#b98456 32px
+          );
+        border-bottom:1px solid rgba(0,0,0,.06);
+      }
+      .topRow{display:flex;align-items:center;gap:10px}
+      .iconBtn{width:32px;height:32px;display:grid;place-items:center;border-radius:999px;border:0;background:transparent}
+      .searchBar{
+        flex:1;height:42px;display:flex;align-items:center;gap:10px;padding:0 12px;
+        background:#fff;border:1px solid #c7c7c7;border-radius:999px;box-shadow:var(--shadow)
+      }
+      .searchLeft{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+      .searchPlaceholder{font-size:16px;color:#6f7373;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .searchRight{display:flex;align-items:center;gap:8px}
+      .svgIcon{width:22px;height:22px;display:block}
+
+      /* -------- Content -------- */
+      .content{padding:14px 14px 110px}
+      .productRow{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+      .thumb{
+        width:60px;height:60px;border-radius:10px;border:1px solid var(--border);background:#fff;
+        overflow:hidden;display:grid;place-items:center;flex:0 0 auto;position:relative;cursor:pointer
+      }
+      .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+      .thumbHint{
+        position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:#6f7373;
+        padding:6px;text-align:center;background:rgba(255,255,255,.6)
+      }
+      .titleBlock{flex:1;min-width:0}
+      .titleEditable{font-size:26px;font-weight:800;line-height:1.12;margin:0 0 4px 0;outline:none}
+      .subtitleEditable{
+        font-size:18px;font-weight:600;margin:0;opacity:.95;outline:none;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+      }
+
+      .starsRow{display:flex;gap:6px;align-items:center;margin:8px 0 10px}
+      .starBtn{
+        width:36px;height:36px;border:0;background:transparent;padding:0;margin:0;
+        display:grid;place-items:center;cursor:pointer
+      }
+      .starBtn:focus-visible{outline:2px solid rgba(0,113,133,.35);outline-offset:3px;border-radius:8px}
+
+      .label{font-size:20px;font-weight:800;margin:12px 0 10px}
+      .textarea{
+        width:100%;min-height:170px;border:2px solid #bfc5c5;border-radius:12px;
+        padding:14px;font-size:18px;line-height:1.3;resize:none;outline:none;background:#fff
+      }
+
+      .sectionTitle{font-size:20px;font-weight:800;margin:16px 0 10px}
+      .mediaRow{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+      .tile{
+        width:78px;height:78px;border-radius:12px;border:2px solid #c7cdcd;background:var(--tile-bg);
+        display:grid;place-items:center;position:relative;overflow:hidden;flex:0 0 auto;cursor:pointer
+      }
+      .tile img{width:100%;height:100%;object-fit:cover;display:block}
+      .tileEmptyMark{
+        width:42px;height:42px;border-radius:10px;border:2px solid rgba(15,17,17,.1);
+        background:rgba(255,255,255,.65);display:grid;place-items:center;color:rgba(15,17,17,.35);
+        font-weight:900;font-size:18px
+      }
+      .plusTile{font-size:44px;line-height:1;color:rgba(15,17,17,.55);font-weight:500}
+      .removeBtn{
+        position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:999px;border:0;
+        background:rgba(255,255,255,.85);box-shadow:0 1px 6px rgba(0,0,0,.2);
+        display:grid;place-items:center;cursor:pointer
+      }
+      .removeBtn svg{width:14px;height:14px}
+
+      .fieldLabelRow{display:flex;gap:8px;align-items:baseline;margin:16px 0 8px}
+      .fieldLabelRow .fieldLabel{font-size:20px;font-weight:800}
+      .fieldLabelRow .required{font-size:20px;font-weight:700}
+      .input{
+        width:100%;height:54px;border:2px solid #bfc5c5;border-radius:12px;padding:0 14px;
+        font-size:18px;outline:none
+      }
+
+      .submitBar{
+        position:fixed;left:0;right:0;bottom:0;
+        padding:12px 14px calc(env(safe-area-inset-bottom) + 12px);
+        background:#fff;border-top:1px solid rgba(0,0,0,.06);
+        z-index: 40;
+      }
+      .submitBtn{
+        width:100%;height:58px;border-radius:999px;border:1px solid var(--amazon-yellow-border);
+        background:var(--amazon-yellow);font-size:22px;font-weight:800;color:#111;
+        box-shadow:0 2px 0 rgba(0,0,0,.08)
+      }
+      .submitBtn:active{transform:translateY(1px)}
+
+      [contenteditable="true"]{-webkit-user-select:text;user-select:text}
+      [contenteditable="true"]:focus{
+        outline:2px solid rgba(0,113,133,.25);border-radius:8px;padding:2px 4px;margin-left:-4px
+      }
+
+      /* -------- Time picker modal (shown on Submit) -------- */
+      .modalBackdrop{
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.35);
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 100;
+        padding: 14px;
+      }
+      .modal{
+        width: min(520px, 100%);
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 10px 40px rgba(0,0,0,.25);
+        overflow: hidden;
+      }
+      .modalHeader{
+        padding: 14px 16px 10px;
+        font-size: 16px;
+        font-weight: 800;
+      }
+      .modalBody{
+        padding: 0 16px 16px;
+      }
+      .timeRow{
+        display:flex;
+        gap:12px;
+        align-items:center;
+      }
+      .timeRow label{
+        font-size: 14px;
+        font-weight: 700;
+        color: #222;
+        min-width: 54px;
+      }
+      .timeInput{
+        flex: 1;
+        height: 44px;
+        border: 2px solid #bfc5c5;
+        border-radius: 12px;
+        padding: 0 12px;
+        font-size: 16px;
+        outline: none;
+      }
+      .modalActions{
+        display:flex;
+        gap:10px;
+        padding: 12px 16px 16px;
+      }
+      .btn{
+        flex: 1;
+        height: 46px;
+        border-radius: 999px;
+        border: 1px solid #c7c7c7;
+        background: #fff;
+        font-weight: 800;
+        font-size: 16px;
+      }
+      .btnPrimary{
+        border-color: var(--amazon-yellow-border);
+        background: var(--amazon-yellow);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="captureRoot">
+      <!-- Fake status bar that WILL be included in the PNG -->
+      <div class="statusBar" aria-hidden="true">
+        <div class="statusBarRow">
+          <div class="statusTime" id="statusTime">9:41</div>
+          <div class="statusRight">
+            <!-- Cellular -->
+            <span class="sbIcon sbCell">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 18h2v3H3v-3Zm4-4h2v7H7v-7Zm4-4h2v11h-2V10Zm4-4h2v15h-2V6Zm4-3h2v18h-2V3Z" fill="#111"/>
+              </svg>
+            </span>
+            <!-- WiFi -->
+            <span class="sbIcon sbWifi">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M2.5 8.5C6.3 4.7 17.7 4.7 21.5 8.5" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+                <path d="M5.5 12c2.6-2.6 10.4-2.6 13 0" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+                <path d="M9 15.5c1.2-1.2 4.8-1.2 6 0" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="18.5" r="1.2" fill="#111"/>
+              </svg>
+            </span>
+            <!-- Battery -->
+            <span class="sbIcon sbBattery">
+              <svg viewBox="0 0 44 24" fill="none">
+                <rect x="2" y="6" width="34" height="12" rx="3" stroke="#111" stroke-width="2"/>
+                <rect x="4.5" y="8.5" width="28" height="7" rx="2" fill="#111"/>
+                <rect x="37" y="9" width="5" height="6" rx="2" fill="#111"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <header class="woodHeader">
+        <div class="topRow">
+          <button class="iconBtn" aria-label="Back">
+            <svg class="svgIcon" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18l-6-6 6-6" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <div class="searchBar" role="search" aria-label="Search">
+            <div class="searchLeft">
+              <svg class="svgIcon" viewBox="0 0 24 24" fill="none">
+                <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="#111" stroke-width="2"/>
+                <path d="M16.5 16.5 21 21" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <div class="searchPlaceholder">Search or ask a question</div>
+            </div>
+            <div class="searchRight" aria-hidden="true">
+              <svg class="svgIcon" viewBox="0 0 24 24" fill="none">
+                <path d="M7 7h2l1.2-2h3.6L15 7h2a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3Z" stroke="#111" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="#111" stroke-width="2"/>
+              </svg>
+              <svg class="svgIcon" viewBox="0 0 24 24" fill="none">
+                <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3Z" stroke="#111" stroke-width="2"/>
+                <path d="M5 11a7 7 0 0 0 14 0" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 18v3" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content" id="app">
+        <div class="productRow">
+          <button class="thumb" id="productThumbBtn" aria-label="Upload product image">
+            <img id="productThumbImg" alt="" style="display:none" />
+            <div class="thumbHint" id="productThumbHint">Tap to upload</div>
+          </button>
+
+          <div class="titleBlock">
+            <h1 id="productTitle" class="titleEditable" contenteditable="true" spellcheck="false">How was the item?</h1>
+            <p id="productSubtitle" class="subtitleEditable" contenteditable="true" spellcheck="false">Led Strip Lights for Bedroom Dimmable 20 F…</p>
+          </div>
+        </div>
+
+        <div class="starsRow" id="starsRow" role="radiogroup" aria-label="Rating"></div>
+
+        <div class="label">Write a review</div>
+        <textarea id="reviewText" class="textarea" placeholder="" aria-label="Write a review"></textarea>
+
+        <div class="sectionTitle">Share a video or photo</div>
+        <div class="mediaRow">
+          <button class="tile" id="mediaPreviewBtn" aria-label="Media preview tile">
+            <img id="mediaPreviewImg" alt="" style="display:none" />
+            <div id="mediaEmptyMark" class="tileEmptyMark" aria-hidden="true"></div>
+
+            <button id="mediaRemoveBtn" class="removeBtn" aria-label="Remove media" style="display:none" type="button">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 7l10 10M17 7 7 17" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </button>
+
+          <button class="tile" id="mediaAddBtn" aria-label="Add media">
+            <div class="plusTile">+</div>
+          </button>
+        </div>
+
+        <div class="fieldLabelRow">
+          <div class="fieldLabel">Title your review</div>
+          <div class="required">(required)</div>
+        </div>
+        <input id="reviewTitle" class="input" type="text" value="" aria-label="Title your review" />
+      </main>
+
+      <div class="submitBar">
+        <button class="submitBtn" id="submitBtn" type="button">Submit</button>
+      </div>
+
+      <input id="productThumbInput" type="file" accept="image/*" style="display:none" />
+      <input id="mediaInput" type="file" accept="image/*,video/*" style="display:none" />
+    </div>
+
+    <!-- Time picker modal -->
+    <div class="modalBackdrop" id="timeModal" role="dialog" aria-modal="true" aria-label="Select time">
+      <div class="modal">
+        <div class="modalHeader">Select status bar time</div>
+        <div class="modalBody">
+          <div class="timeRow">
+            <label for="timePicker">Time</label>
+            <input id="timePicker" class="timeInput" type="time" />
+          </div>
+        </div>
+        <div class="modalActions">
+          <button class="btn" id="cancelCapture" type="button">Cancel</button>
+          <button class="btn btnPrimary" id="confirmCapture" type="button">Capture PNG</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      const statusTimeEl = $("statusTime");
+
+      const productThumbBtn = $("productThumbBtn");
+      const productThumbInput = $("productThumbInput");
+      const productThumbImg = $("productThumbImg");
+      const productThumbHint = $("productThumbHint");
+
+      const mediaPreviewBtn = $("mediaPreviewBtn");
+      const mediaAddBtn = $("mediaAddBtn");
+      const mediaInput = $("mediaInput");
+      const mediaPreviewImg = $("mediaPreviewImg");
+      const mediaEmptyMark = $("mediaEmptyMark");
+      const mediaRemoveBtn = $("mediaRemoveBtn");
+
+      const starsRow = $("starsRow");
+
+      const submitBtn = $("submitBtn");
+
+      const timeModal = $("timeModal");
+      const timePicker = $("timePicker");
+      const cancelCapture = $("cancelCapture");
+      const confirmCapture = $("confirmCapture");
+
+      let productThumbUrl = null;
+      let mediaUrlToRevoke = null; // object URL for images only
+      let rating = 5; // Amazon-like default
+      let pendingCapture = false;
+
+      function revokeUrl(url) { try { if (url) URL.revokeObjectURL(url); } catch {} }
+
+      function setProductThumb(file) {
+        revokeUrl(productThumbUrl);
+        productThumbUrl = URL.createObjectURL(file);
+        productThumbImg.src = productThumbUrl;
+        productThumbImg.style.display = "block";
+        productThumbHint.style.display = "none";
+      }
+
+      function clearMedia() {
+        revokeUrl(mediaUrlToRevoke);
+        mediaUrlToRevoke = null;
+        mediaPreviewImg.removeAttribute("src");
+        mediaPreviewImg.style.display = "none";
+        mediaRemoveBtn.style.display = "none";
+        mediaEmptyMark.style.display = "grid";
+      }
+
+      async function videoToThumbnailDataUrl(file) {
+        const tempUrl = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.src = tempUrl;
+
+        await new Promise((resolve, reject) => {
+          video.onloadedmetadata = () => resolve();
+          video.onerror = () => reject(new Error("Video metadata load failed"));
+        });
+
+        const targetTime = Math.min(0.1, Math.max(0, video.duration / 10));
+        video.currentTime = targetTime;
+
+        await new Promise((resolve, reject) => {
+          video.onseeked = () => resolve();
+          video.onerror = () => reject(new Error("Video seek failed"));
+        });
+
+        const canvas = document.createElement("canvas");
+        const w = Math.max(1, video.videoWidth);
+        const h = Math.max(1, video.videoHeight);
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(video, 0, 0, w, h);
+
+        const thumb = canvas.toDataURL("image/png");
+        revokeUrl(tempUrl);
+        return thumb;
+      }
+
+      async function setMedia(file) {
+        clearMedia();
+
+        if (file.type.startsWith("image/")) {
+          mediaUrlToRevoke = URL.createObjectURL(file);
+          mediaPreviewImg.src = mediaUrlToRevoke;
+        } else if (file.type.startsWith("video/")) {
+          mediaPreviewImg.src = await videoToThumbnailDataUrl(file);
+        } else {
+          return;
+        }
+
+        mediaPreviewImg.style.display = "block";
+        mediaRemoveBtn.style.display = "grid";
+        mediaEmptyMark.style.display = "none";
+      }
+
+      function triggerInput(inputEl) {
+        inputEl.value = "";
+        inputEl.click();
+      }
+
+      function starSvg(filled) {
+        const fill = filled
+          ? getComputedStyle(document.documentElement).getPropertyValue("--star-on").trim()
+          : getComputedStyle(document.documentElement).getPropertyValue("--star-off").trim();
+
+        return `
+          <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="${fill}"
+              d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.6L12 17.9 6.1 20.6 7.3 14 2.5 9.4l6.6-.9L12 2.5z"
+            />
+          </svg>`;
+      }
+
+      function renderStars() {
+        starsRow.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "starBtn";
+          btn.setAttribute("role", "radio");
+          btn.setAttribute("aria-label", `${i} star${i === 1 ? "" : "s"}`);
+          btn.setAttribute("aria-checked", String(i === rating));
+          btn.innerHTML = starSvg(i <= rating);
+
+          btn.addEventListener("click", () => {
+            rating = i; // 1–5 only
+            renderStars();
+          });
+
+          btn.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              rating = Math.max(1, rating - 1);
+              renderStars();
+              starsRow.querySelectorAll(".starBtn")[rating - 1]?.focus();
+            }
+            if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              rating = Math.min(5, rating + 1);
+              renderStars();
+              starsRow.querySelectorAll(".starBtn")[rating - 1]?.focus();
+            }
+          });
+
+          starsRow.appendChild(btn);
+        }
+      }
+
+      function setStatusTimeFromHHMM(hhmm) {
+        // iOS status bar format: "9:41" (no leading zero on hour)
+        if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return;
+        const [hh, mm] = hhmm.split(":").map((x) => parseInt(x, 10));
+        const hour12 = ((hh % 12) || 12);
+        statusTimeEl.textContent = `${hour12}:${String(mm).padStart(2, "0")}`;
+      }
+
+      function openTimeModal() {
+        // default to current statusTime mapped to a sane 24h value
+        // if timePicker empty, set to 09:41
+        if (!timePicker.value) timePicker.value = "09:41";
+        timeModal.style.display = "flex";
+      }
+
+      function closeTimeModal() {
+        timeModal.style.display = "none";
+      }
+
+      async function captureViewportCanvas() {
+        const scrollX = window.scrollX || window.pageXOffset || 0;
+        const scrollY = window.scrollY || window.pageYOffset || 0;
+
+        return html2canvas(document.body, {
+          backgroundColor: "#ffffff",
+          useCORS: true,
+          scale: Math.min(2, window.devicePixelRatio || 1),
+          x: 0,
+          y: scrollY,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          scrollX: -scrollX,
+          scrollY: -scrollY,
+          windowWidth: window.innerWidth,
+          windowHeight: window.innerHeight,
+        });
+      }
+
+      async function downloadPngFromCanvas(canvas) {
+        const dataUrl = canvas.toDataURL("image/png");
+        const filename = "amazon-review-phone-screen.png";
+
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        // iOS Safari fallback
+        setTimeout(() => {
+          if (/iPad|iPhone|iPod/.test(navigator.userAgent)) window.open(dataUrl, "_blank");
+        }, 250);
+      }
+
+      // Upload handlers
+      productThumbBtn.addEventListener("click", () => triggerInput(productThumbInput));
+      productThumbInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !file.type.startsWith("image/")) return;
+        setProductThumb(file);
+      });
+
+      mediaPreviewBtn.addEventListener("click", (e) => {
+        if (e.target === mediaRemoveBtn || mediaRemoveBtn.contains(e.target)) return;
+        triggerInput(mediaInput); // replace
+      });
+      mediaAddBtn.addEventListener("click", () => triggerInput(mediaInput));
+
+      mediaInput.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+          await setMedia(file);
+        } catch {
+          clearMedia();
+          alert("Could not load that media. Please try a different file.");
+        }
+      });
+
+      mediaRemoveBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearMedia();
+      });
+
+      // Submit -> open time picker modal -> capture viewport
+      submitBtn.addEventListener("click", () => {
+        if (pendingCapture) return;
+        pendingCapture = true;
+        openTimeModal();
+      });
+
+      cancelCapture.addEventListener("click", () => {
+        pendingCapture = false;
+        closeTimeModal();
+      });
+
+      confirmCapture.addEventListener("click", async () => {
+        submitBtn.disabled = true;
+        const oldLabel = submitBtn.textContent;
+        submitBtn.textContent = "Submitting…";
+
+        try {
+          setStatusTimeFromHHMM(timePicker.value);
+          closeTimeModal();
+
+          await new Promise((r) => requestAnimationFrame(() => r()));
+          const canvas = await captureViewportCanvas();
+          await downloadPngFromCanvas(canvas);
+        } catch {
+          alert("Screenshot failed. Please try again.");
+        } finally {
+          pendingCapture = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = oldLabel;
+        }
+      });
+
+      // Default state (matches screenshot initial state)
+      $("reviewText").value = "";
+      $("reviewTitle").value = "";
+      clearMedia();
+      renderStars();
+      // Default status bar time like classic iPhone screenshots
+      setStatusTimeFromHHMM("09:41");
+    </script>
+  </body>
+</html>
